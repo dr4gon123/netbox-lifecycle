@@ -115,10 +115,13 @@ class LifecycleInfoPanel(panels.Panel):
             assigned_object_id=getattr(instance, self.object_id_attr, instance.id),
             assigned_object_type_id=content_type.id,
         ).first()
-        context = {**context, 'object': lifecycle}
+        # Inside a layout the template engine hands us a RequestContext,
+        # which is not a plain mapping - flatten it before re-keying.
+        flat = context.flatten() if hasattr(context, 'flatten') else dict(context)
+        flat['object'] = lifecycle
         return mark_safe(
-            HardwareLifecyclePanel().render(context)
-            + HardwareLifecycleDatesPanel().render(context)
+            HardwareLifecyclePanel().render(flat)
+            + HardwareLifecycleDatesPanel().render(flat)
         )
 
 
