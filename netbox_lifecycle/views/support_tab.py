@@ -129,7 +129,10 @@ def _support_layout(model_name):
         left.append(get_contract_panel(model_name, FIELD_NAMES[model_name]))
     if PLUGIN_SETTINGS.get('license_card_position') == 'tab':
         right.append(get_license_panel(model_name, FIELD_NAMES[model_name]))
-    if PLUGIN_SETTINGS.get('lifecycle_card_position') == 'tab':
+    if (
+        PLUGIN_SETTINGS.get('lifecycle_card_position') == 'tab'
+        and model_name in LIFECYCLE_SOURCE
+    ):
         right.append(LifecycleInfoPanel(*LIFECYCLE_SOURCE[model_name]))
     return layout.SimpleLayout(left_panels=left, right_panels=right)
 
