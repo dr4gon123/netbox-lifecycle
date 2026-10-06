@@ -12,6 +12,119 @@ from netbox_lifecycle.ui.panels.tabbed import TabbedTablePanel
 PLUGIN_SETTINGS = settings.PLUGINS_CONFIG.get('netbox_lifecycle', {})
 
 
+def get_contract_panel(model_name, field_name):
+    """
+    The tabbed Contracts panel (active/expired/future/unspecified) for a
+    device, module, or virtual machine page. Shared by the template
+    extension cards and the Support tab view.
+    """
+    action = [
+        actions.AddObject(
+            'netbox_lifecycle.SupportContractAssignment',
+            url_params={
+                model_name: lambda ctx: ctx['object'].pk,
+            },
+        ),
+    ]
+
+    include_columns = [
+        'contract',
+        'sku',
+        'start',
+        'end',
+    ]
+    exclude_columns = [
+        'device_name',
+        'module_name',
+        'virtual_machine_name',
+        'license_name',
+        'device_model',
+        'device_serial',
+        'module_serial',
+        'device_status',
+        'virtual_machine_status',
+        'quantity',
+        'renewal',
+        'description',
+        'comments',
+        'actions',
+    ]
+    filter = {
+        field_name: lambda ctx: ctx['object'].pk,
+    }
+    return TabbedTablePanel(
+        title=_('Contracts'),
+        tabs={
+            'active': panels.ObjectsTablePanel(
+                title=_('Active'),
+                model='netbox_lifecycle.supportcontractassignment',
+                filters={**filter, 'status': constants.CONTRACT_STATUS_ACTIVE},
+                include_columns=include_columns,
+                exclude_columns=exclude_columns,
+            ),
+            'expired': panels.ObjectsTablePanel(
+                title=_('Expired'),
+                model='netbox_lifecycle.supportcontractassignment',
+                filters={**filter, 'status': constants.CONTRACT_STATUS_EXPIRED},
+                include_columns=include_columns,
+                exclude_columns=exclude_columns,
+            ),
+            'future': panels.ObjectsTablePanel(
+                title=_('Future'),
+                model='netbox_lifecycle.supportcontractassignment',
+                filters={**filter, 'status': constants.CONTRACT_STATUS_FUTURE},
+                include_columns=include_columns,
+                exclude_columns=exclude_columns,
+            ),
+            'unspecified': panels.ObjectsTablePanel(
+                title=_('Unspecified'),
+                model='netbox_lifecycle.supportcontractassignment',
+                filters={
+                    **filter,
+                    'status': constants.CONTRACT_STATUS_UNSPECIFIED,
+                },
+                include_columns=include_columns,
+                exclude_columns=exclude_columns,
+            ),
+        },
+        actions=action,
+    )
+
+
+def get_license_panel(model_name, field_name):
+    """
+    The Licenses panel for a device or virtual machine page. Shared by
+    the template extension cards and the Support tab view.
+    """
+    action = [
+        actions.AddObject(
+            'netbox_lifecycle.LicenseAssignment',
+            url_params={
+                model_name: lambda ctx: ctx['object'].pk,
+            },
+        ),
+    ]
+
+    return panels.ObjectsTablePanel(
+        title=_('Licenses'),
+        model='netbox_lifecycle.licenseassignment',
+        filters={field_name: lambda ctx: ctx['object'].pk},
+        include_columns=[
+            'vendor',
+            'license',
+            'quantity',
+        ],
+        exclude_columns=[
+            'device',
+            'virtual_machine',
+            'description',
+            'comments',
+            'actions',
+        ],
+        actions=action,
+    )
+
+
 class BaseMixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -126,79 +239,7 @@ class ContractMixin:
             return ''
 
         context = self.get_context(self.context)
-
-        title = _('Contracts')
-        action = [
-            actions.AddObject(
-                'netbox_lifecycle.SupportContractAssignment',
-                url_params={
-                    self.model_name: lambda ctx: ctx['object'].pk,
-                },
-            ),
-        ]
-
-        include_columns = [
-            'contract',
-            'sku',
-            'start',
-            'end',
-        ]
-        exclude_columns = [
-            'device_name',
-            'module_name',
-            'virtual_machine_name',
-            'license_name',
-            'device_model',
-            'device_serial',
-            'module_serial',
-            'device_status',
-            'virtual_machine_status',
-            'quantity',
-            'renewal',
-            'description',
-            'comments',
-            'actions',
-        ]
-        filter = {
-            self.field_name: lambda ctx: ctx['object'].pk,
-        }
-        panel = TabbedTablePanel(
-            title=title,
-            tabs={
-                'active': panels.ObjectsTablePanel(
-                    title=_('Active'),
-                    model='netbox_lifecycle.supportcontractassignment',
-                    filters={**filter, 'status': constants.CONTRACT_STATUS_ACTIVE},
-                    include_columns=include_columns,
-                    exclude_columns=exclude_columns,
-                ),
-                'expired': panels.ObjectsTablePanel(
-                    title=_('Expired'),
-                    model='netbox_lifecycle.supportcontractassignment',
-                    filters={**filter, 'status': constants.CONTRACT_STATUS_EXPIRED},
-                    include_columns=include_columns,
-                    exclude_columns=exclude_columns,
-                ),
-                'future': panels.ObjectsTablePanel(
-                    title=_('Future'),
-                    model='netbox_lifecycle.supportcontractassignment',
-                    filters={**filter, 'status': constants.CONTRACT_STATUS_FUTURE},
-                    include_columns=include_columns,
-                    exclude_columns=exclude_columns,
-                ),
-                'unspecified': panels.ObjectsTablePanel(
-                    title=_('Unspecified'),
-                    model='netbox_lifecycle.supportcontractassignment',
-                    filters={
-                        **filter,
-                        'status': constants.CONTRACT_STATUS_UNSPECIFIED,
-                    },
-                    include_columns=include_columns,
-                    exclude_columns=exclude_columns,
-                ),
-            },
-            actions=action,
-        )
+        panel = get_contract_panel(self.model_name, self.field_name)
         return panel.render(context=context)
 
 
@@ -212,34 +253,7 @@ class LicenseMixin:
             return ''
 
         context = self.get_context(self.context)
-
-        action = [
-            actions.AddObject(
-                'netbox_lifecycle.LicenseAssignment',
-                url_params={
-                    self.model_name: lambda ctx: ctx['object'].pk,
-                },
-            ),
-        ]
-
-        panel = panels.ObjectsTablePanel(
-            title=_('Licenses'),
-            model='netbox_lifecycle.licenseassignment',
-            filters={self.field_name: lambda ctx: ctx['object'].pk},
-            include_columns=[
-                'vendor',
-                'license',
-                'quantity',
-            ],
-            exclude_columns=[
-                'device',
-                'virtual_machine',
-                'description',
-                'comments',
-                'actions',
-            ],
-            actions=action,
-        )
+        panel = get_license_panel(self.model_name, self.field_name)
         return panel.render(context=context)
 
 
